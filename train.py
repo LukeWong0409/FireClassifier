@@ -13,7 +13,7 @@ torch.manual_seed(42)
 def main():
     parser = argparse.ArgumentParser(description='Fire Classification Model')
     parser.add_argument('--num_epochs', type=int, default=25, help='训练轮数')
-    parser.add_argument('--batch_size', type=int, default=128, help='批次大小')
+    parser.add_argument('--batch_size', type=int, default=64, help='批次大小')
     parser.add_argument('--lr', type=float, default=0.001, help='学习率')
     parser.add_argument('--weight_decay', type=float, default=0.01, help='权重衰减系数')
     parser.add_argument('--checkpoint', type=str, default='checkpoint.pth', help='checkpoint保存路径')
