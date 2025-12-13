@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=25, help='训练轮数')
     parser.add_argument('--batch_size', type=int, default=128, help='批次大小')
     parser.add_argument('--lr', type=float, default=0.001, help='学习率')
+    parser.add_argument('--weight_decay', type=float, default=0.01, help='权重衰减系数')
     parser.add_argument('--checkpoint', type=str, default='checkpoint.pth', help='checkpoint保存路径')
     parser.add_argument('--loss_history', type=str, default='loss_history.npy', help='loss历史保存路径')
     parser.add_argument('--loss_plot', type=str, default='loss_curve.png', help='loss曲线保存路径')
@@ -34,7 +35,7 @@ def main():
     # 初始化模型、损失函数和优化器
     model = FireClassifier()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     
     # 训练模型
     print("开始训练模型...")
