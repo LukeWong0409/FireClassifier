@@ -25,17 +25,30 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
     # 初始化最小验证损失
     min_val_loss = float('inf')
     
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
     if checkpoint_path and os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path)
+        # 加载checkpoint
+        checkpoint = torch.load(checkpoint_path, map_location=device)  # 添加map_location参数
         model.load_state_dict(checkpoint['model_state_dict'])
+        # 先将模型移动到设备
+        model.to(device)
+        # 然后加载优化器状态
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        # 将优化器的所有参数移动到设备上
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if torch.is_tensor(v):
+                    state[k] = v.to(device)
+        
         start_epoch = checkpoint['epoch'] + 1
         # 从checkpoint中获取之前的最小验证损失
         min_val_loss = checkpoint['val_loss']
         print(f"从checkpoint继续训练，开始于第{start_epoch}个epoch")
-    
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    else:
+        # 如果没有checkpoint，直接将模型移动到设备
+        model.to(device)
     
     for epoch in range(start_epoch, num_epochs):
         # 训练阶段
