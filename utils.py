@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 # 训练函数
-def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=25, checkpoint_path=None, loss_history_path=None):
+def train_model(model, train_loader, val_loader, criterion, optimizer, lr, num_epochs=25, checkpoint_path=None, loss_history_path=None):
     # 初始化历史数据
     train_loss_history = []
     val_loss_history = []
@@ -25,13 +25,23 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         model.to(device)
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
-        # 将优化器的所有参数移动到设备上
-        for state in optimizer.state.values():
-            for k, v in state.items():
-                if torch.is_tensor(v):
-                    state[k] = v.to(device)
+        # 检查学习率是否一致
+        checkpoint_lr = checkpoint.get('learning_rate', None)
+        if checkpoint_lr is None or abs(checkpoint_lr - lr) > 1e-8:
+            print(f"Checkpoint学习率({checkpoint_lr})与当前学习率({lr})不一致或未记录，重新初始化优化器")
+            # 重新初始化优化器
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
+            optimizer.zero_grad()
+        else:
+            # 学习率一致，加载优化器状态
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            # 将优化器的所有参数移动到设备上
+            for state in optimizer.state.values():
+                for k, v in state.items():
+                    if torch.is_tensor(v):
+                        state[k] = v.to(device)
         
         checkpoint_epoch = checkpoint['epoch']
         start_epoch = checkpoint_epoch + 1
@@ -140,7 +150,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
                 'train_loss': epoch_train_loss,
                 'train_acc': epoch_train_acc,
                 'val_loss': epoch_val_loss,
-                'val_acc': epoch_val_acc
+                'val_acc': epoch_val_acc,
+                'learning_rate': lr  # 记录学习率
             }
             torch.save(checkpoint, checkpoint_path)
             print(f"  验证损失下降到{min_val_loss:.4f}，保存checkpoint到{checkpoint_path}")

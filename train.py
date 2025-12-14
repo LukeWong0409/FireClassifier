@@ -40,7 +40,8 @@ def main():
     # 训练模型
     print("开始训练模型...")
     model, train_loss, val_loss, train_acc, val_acc = train_model(
-        model, train_loader, val_loader, criterion, optimizer, 
+        model, train_loader, val_loader, criterion, optimizer,
+        lr=args.lr,  # 传递学习率参数
         num_epochs=args.num_epochs, 
         checkpoint_path=args.checkpoint, 
         loss_history_path=args.loss_history
