@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--acc_plot', type=str, default='accuracy_curve.png', help='准确率曲线保存路径')
     parser.add_argument('--train_dir', type=str, default='./data/train', help='训练数据目录')
     parser.add_argument('--val_dir', type=str, default='./data/val', help='验证数据目录')
+    parser.add_argument('--save_latest', type=bool, default=True, help='是否在训练完成后保存模型到另一个位置')
+    parser.add_argument('--latest_path', type=str, default='checkpoint_latest.pth', help='训练完成后模型的保存路径')
     args = parser.parse_args()
     
     # 获取数据加载器
@@ -54,6 +56,22 @@ def main():
     # 绘制准确率曲线
     print("绘制准确率曲线...")
     plot_accuracy(train_acc, val_acc, save_path=args.acc_plot)
+    
+    # 训练完成后保存模型到指定路径
+    if args.save_latest:
+        # 将模型移动到CPU以保存
+        model = model.to('cpu')
+        # 保存模型状态
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'epoch': args.num_epochs,
+            'train_loss': train_loss[-1] if train_loss else 0,
+            'val_loss': val_loss[-1] if val_loss else 0,
+            'train_acc': train_acc[-1] if train_acc else 0,
+            'val_acc': val_acc[-1] if val_acc else 0,
+            'learning_rate': args.lr
+        }, args.latest_path)
+        print(f"训练完成后模型已保存到{args.latest_path}")
     
     print("训练完成!")
 
