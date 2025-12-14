@@ -6,34 +6,25 @@ from tqdm import tqdm
 
 # 训练函数
 def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=25, checkpoint_path=None, loss_history_path=None):
-    # 加载已有loss和准确率历史
+    # 初始化历史数据
     train_loss_history = []
     val_loss_history = []
     train_acc_history = []
     val_acc_history = []
     
-    if loss_history_path and os.path.exists(loss_history_path):
-        loss_data = np.load(loss_history_path, allow_pickle=True).item()
-        train_loss_history = loss_data['train_loss']
-        val_loss_history = loss_data['val_loss']
-        if 'train_acc' in loss_data and 'val_acc' in loss_data:
-            train_acc_history = loss_data['train_acc']
-            val_acc_history = loss_data['val_acc']
-    
-    # 加载checkpoint
+    # 加载checkpoint（如果存在）
     start_epoch = 0
-    # 初始化最小验证损失
     min_val_loss = float('inf')
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
+    checkpoint_epoch = -1  # 记录checkpoint的epoch
+    
     if checkpoint_path and os.path.exists(checkpoint_path):
         # 加载checkpoint
-        checkpoint = torch.load(checkpoint_path, map_location=device)  # 添加map_location参数
+        checkpoint = torch.load(checkpoint_path, map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
-        # 先将模型移动到设备
         model.to(device)
-        # 然后加载优化器状态
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
         # 将优化器的所有参数移动到设备上
@@ -42,14 +33,37 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
                 if torch.is_tensor(v):
                     state[k] = v.to(device)
         
-        start_epoch = checkpoint['epoch'] + 1
-        # 从checkpoint中获取之前的最小验证损失
+        checkpoint_epoch = checkpoint['epoch']
+        start_epoch = checkpoint_epoch + 1
         min_val_loss = checkpoint['val_loss']
         print(f"从checkpoint继续训练，开始于第{start_epoch}个epoch")
     else:
         # 如果没有checkpoint，直接将模型移动到设备
         model.to(device)
     
+    # 加载历史数据并根据checkpoint裁剪
+    if loss_history_path and os.path.exists(loss_history_path):
+        loss_data = np.load(loss_history_path, allow_pickle=True).item()
+        train_loss_history = loss_data['train_loss']
+        val_loss_history = loss_data['val_loss']
+        
+        if 'train_acc' in loss_data and 'val_acc' in loss_data:
+            train_acc_history = loss_data['train_acc']
+            val_acc_history = loss_data['val_acc']
+        
+        # 根据checkpoint的epoch裁剪历史数据，只保留到checkpoint记录的轮数
+        if checkpoint_epoch >= 0:
+            if len(train_loss_history) > checkpoint_epoch + 1:
+                train_loss_history = train_loss_history[:checkpoint_epoch + 1]
+                val_loss_history = val_loss_history[:checkpoint_epoch + 1]
+                
+                if train_acc_history and len(train_acc_history) > checkpoint_epoch + 1:
+                    train_acc_history = train_acc_history[:checkpoint_epoch + 1]
+                    val_acc_history = val_acc_history[:checkpoint_epoch + 1]
+                    
+                print(f"已将历史数据裁剪到checkpoint记录的轮数: {checkpoint_epoch + 1}个epoch")
+    
+    # 训练循环保持不变
     for epoch in range(start_epoch, num_epochs):
         # 训练阶段
         model.train()
@@ -70,6 +84,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
             
             # 反向传播和优化
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # 添加梯度裁剪
             optimizer.step()
             
             running_loss += loss.item() * inputs.size(0)
