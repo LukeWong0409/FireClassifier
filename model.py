@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-# 定义基本残差块
+# 定义基本残差块（ResNet18/34使用）
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -32,7 +32,44 @@ class BasicBlock(nn.Module):
 
         return out
 
-# 定义ResNet18模型
+# 定义瓶颈残差块（ResNet50/101/152使用）
+class Bottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+        super(Bottleneck, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.conv3 = nn.Conv2d(out_channels, out_channels * self.expansion, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+
+        return out
+
+# 定义ResNet50模型
 class FireClassifier(nn.Module):
     def __init__(self, num_classes=3):
         super(FireClassifier, self).__init__()
@@ -44,15 +81,15 @@ class FireClassifier(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        # 残差块层
-        self.layer1 = self._make_layer(BasicBlock, 64, 2, stride=1)
-        self.layer2 = self._make_layer(BasicBlock, 128, 2, stride=2)
-        self.layer3 = self._make_layer(BasicBlock, 256, 2, stride=2)
-        self.layer4 = self._make_layer(BasicBlock, 512, 2, stride=2)
+        # 残差块层 - ResNet50使用[3, 4, 6, 3]个blocks
+        self.layer1 = self._make_layer(Bottleneck, 64, 3, stride=1)
+        self.layer2 = self._make_layer(Bottleneck, 128, 4, stride=2)
+        self.layer3 = self._make_layer(Bottleneck, 256, 6, stride=2)
+        self.layer4 = self._make_layer(Bottleneck, 512, 3, stride=2)
 
         # 分类器
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * BasicBlock.expansion, num_classes)
+        self.fc = nn.Linear(512 * Bottleneck.expansion, num_classes)
 
         # 随机初始化权重
         self._initialize_weights()
