@@ -9,8 +9,8 @@ train_transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),  # 随机水平翻转
     transforms.RandomVerticalFlip(),  # 随机垂直翻转
     transforms.RandomRotation(15),  # 增加旋转角度
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # 颜色抖动
-    transforms.RandomGrayscale(p=0.1),  # 随机灰度化
+    # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # 颜色抖动
+    # transforms.RandomGrayscale(p=0.1),  # 随机灰度化
     transforms.ToTensor(),  # 转换为Tensor
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 标准化
 ])
