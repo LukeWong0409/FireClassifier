@@ -4,23 +4,46 @@ from model import FireClassifier
 from dataset import get_data_loaders
 
 def evaluate_per_class(model, data_loader, class_names, device):
-    """在指定数据集上评估模型，计算每个类别的准确率"""
+    """在指定数据集上评估模型，计算每个类别的准确率，并记录正确和错误分类的图像"""
     model.eval()
     correct_per_class = {class_name: 0 for class_name in class_names}
     total_per_class = {class_name: 0 for class_name in class_names}
     
+    # 用于存储每个类别的正确和错误分类的图像信息
+    correct_images = {class_name: [] for class_name in class_names}
+    incorrect_images = {class_name: [] for class_name in class_names}
+    
+    # 获取数据集的图像路径和标签信息
+    dataset = data_loader.dataset
+    img_paths = dataset.imgs
+    
     with torch.no_grad():
+        batch_start_idx = 0
         for inputs, labels in data_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             _, predicted = torch.max(outputs.data, 1)
             
-            for label, prediction in zip(labels, predicted):
-                label_idx = label.item()
+            # 获取当前批次的图像路径
+            batch_img_paths = img_paths[batch_start_idx:batch_start_idx + len(inputs)]
+            
+            for i in range(len(inputs)):
+                label_idx = labels[i].item()
+                pred_idx = predicted[i].item()
                 class_name = class_names[label_idx]
+                pred_class_name = class_names[pred_idx]
+                img_path, _ = batch_img_paths[i]
+                img_name = img_path.split('\\')[-1]  # 获取图像文件名
+                
                 total_per_class[class_name] += 1
-                if label_idx == prediction.item():
+                
+                if label_idx == pred_idx:
                     correct_per_class[class_name] += 1
+                    correct_images[class_name].append(img_name)
+                else:
+                    incorrect_images[class_name].append((img_name, pred_class_name))
+            
+            batch_start_idx += len(inputs)
     
     # 计算每个类别的准确率
     accuracy_per_class = {}
@@ -35,7 +58,7 @@ def evaluate_per_class(model, data_loader, class_names, device):
     total_samples = sum(total_per_class.values())
     overall_accuracy = total_correct / total_samples if total_samples > 0 else 0.0
     
-    return accuracy_per_class, overall_accuracy, total_per_class, correct_per_class
+    return accuracy_per_class, overall_accuracy, total_per_class, correct_per_class, correct_images, incorrect_images
 
 def main():
     parser = argparse.ArgumentParser(description='Evaluate Fire Classification Model on Train and Val Sets')
@@ -43,6 +66,7 @@ def main():
     parser.add_argument('--batch_size', type=int, default=256, help='批次大小')
     parser.add_argument('--train_dir', type=str, default='./data/train', help='训练数据目录')
     parser.add_argument('--val_dir', type=str, default='./data/val', help='验证数据目录')
+    parser.add_argument('--num_samples', type=int, default=5, help='每个类别输出的样本数量')
     args = parser.parse_args()
     
     # 设置设备
@@ -73,12 +97,12 @@ def main():
     
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
-    print(f"模型加载完成，来自epoch {checkpoint['epoch']}")
+    print(f"模型加载完成，来自epoch {checkpoint['epoch'] + 1}")
     
     print("\n" + "="*50)
     print("评估训练集")
     print("="*50)
-    train_acc_per_class, train_overall_acc, train_total_per_class, train_correct_per_class = evaluate_per_class(
+    train_acc_per_class, train_overall_acc, train_total_per_class, train_correct_per_class, train_correct_images, train_incorrect_images = evaluate_per_class(
         model, train_loader, class_names, device
     )
     
@@ -89,10 +113,31 @@ def main():
         print(f"  {class_name}: {train_acc_per_class[class_name]:.4f} ({train_acc_per_class[class_name]*100:.2f}%) "
               f"({train_correct_per_class[class_name]} / {train_total_per_class[class_name]})")
     
+    # 输出训练集每个类别分类正确的图像
+    print("\n" + "="*50)
+    print("训练集分类正确的图像示例:")
+    print("="*50)
+    for class_name in class_names:
+        print(f"\n{class_name} 类别分类正确的图像:")
+        count = min(args.num_samples, len(train_correct_images[class_name]))
+        for i in range(count):
+            print(f"  {train_correct_images[class_name][i]}")
+    
+    # 输出训练集每个类别分类错误的图像
+    print("\n" + "="*50)
+    print("训练集分类错误的图像示例:")
+    print("="*50)
+    for class_name in class_names:
+        print(f"\n{class_name} 类别分类错误的图像:")
+        count = min(args.num_samples, len(train_incorrect_images[class_name]))
+        for i in range(count):
+            img_name, pred_class = train_incorrect_images[class_name][i]
+            print(f"  {img_name} - 被错误分类为: {pred_class}")
+    
     print("\n" + "="*50)
     print("评估验证集")
     print("="*50)
-    val_acc_per_class, val_overall_acc, val_total_per_class, val_correct_per_class = evaluate_per_class(
+    val_acc_per_class, val_overall_acc, val_total_per_class, val_correct_per_class, val_correct_images, val_incorrect_images = evaluate_per_class(
         model, val_loader, class_names, device
     )
     
@@ -102,6 +147,27 @@ def main():
     for class_name in class_names:
         print(f"  {class_name}: {val_acc_per_class[class_name]:.4f} ({val_acc_per_class[class_name]*100:.2f}%) "
               f"({val_correct_per_class[class_name]} / {val_total_per_class[class_name]})")
+    
+    # 输出验证集每个类别分类正确的图像
+    print("\n" + "="*50)
+    print("验证集分类正确的图像示例:")
+    print("="*50)
+    for class_name in class_names:
+        print(f"\n{class_name} 类别分类正确的图像:")
+        count = min(args.num_samples, len(val_correct_images[class_name]))
+        for i in range(count):
+            print(f"  {val_correct_images[class_name][i]}")
+    
+    # 输出验证集每个类别分类错误的图像
+    print("\n" + "="*50)
+    print("验证集分类错误的图像示例:")
+    print("="*50)
+    for class_name in class_names:
+        print(f"\n{class_name} 类别分类错误的图像:")
+        count = min(args.num_samples, len(val_incorrect_images[class_name]))
+        for i in range(count):
+            img_name, pred_class = val_incorrect_images[class_name][i]
+            print(f"  {img_name} - 被错误分类为: {pred_class}")
     
     # 输出总结表格
     print("\n" + "="*70)
