@@ -63,7 +63,7 @@ def evaluate_per_class(model, data_loader, class_names, device):
 def main():
     parser = argparse.ArgumentParser(description='Evaluate Fire Classification Model on Train and Val Sets')
     parser.add_argument('--checkpoint', type=str, default='checkpoint.pth', help='模型checkpoint路径')
-    parser.add_argument('--batch_size', type=int, default=32, help='批次大小')
+    parser.add_argument('--batch_size', type=int, default=8, help='批次大小')
     parser.add_argument('--train_dir', type=str, default='./data/train', help='训练数据目录')
     parser.add_argument('--val_dir', type=str, default='./data/val', help='验证数据目录')
     parser.add_argument('--num_samples', type=int, default=5, help='每个类别输出的样本数量')
