@@ -4,8 +4,7 @@ from torch.utils.data import DataLoader
 
 # 数据预处理和增强 - 增强版本
 train_transform = transforms.Compose([
-    transforms.Resize((256, 256)),  # 先调整到更大的尺寸
-    transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # 随机裁剪
+    transforms.Resize((640, 640)),  # 调整到YOLOv11适配的尺寸 (640x640)
     transforms.RandomHorizontalFlip(),  # 随机水平翻转
     transforms.RandomVerticalFlip(),  # 随机垂直翻转
     transforms.RandomRotation(15),  # 增加旋转角度
@@ -16,9 +15,9 @@ train_transform = transforms.Compose([
 ])
 
 val_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transforms.Resize((640, 640)),  # 调整到YOLOv11适配的尺寸 (640x640)
+    transforms.ToTensor(),  # 转换为Tensor
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 标准化
 ])
 
 # 获取数据加载器
