@@ -61,8 +61,8 @@ python train.py
 --acc_plot      # 准确率历史记录可视化保存位置
 --train_dir     # 训练集路径
 --val_dir       # 验证集路径
---save_latest  # 是否保存训练完全部轮次后的模型检查点
---latest_path  # 保存训练完全部轮次后的模型检查点路径
+--save_latest   # 是否保存训练完全部轮次后的模型检查点
+--latest_path   # 保存训练完全部轮次后的模型检查点路径
 ```
 默认情况下，将会保存训练过程中验证集上损失最低的检查点到当前目录下的`checkpoint.pth`文件，同时也会保存训练完全部轮次后的模型检查点到`checkpoint_latest.pth`文件。为方便从检查点继续训练时的数据可视化，记录了损失函数历史和准确率历史。
 
@@ -79,21 +79,21 @@ python inference.py
 ```bash
 --checkpoint    # 模型检查点路径
 --test_dir      # 测试集路径
---output_csv   # 测试集预测结果保存路径
+--output_csv    # 测试集预测结果保存路径
 ```
 
 `checkpoint.pth`中保存的不只是训练好的模型权重，而是字典结构，结构如下：
 
 ```Python
 checkpoint = {
-    'epoch': epoch,  # 训练轮数
-    'model_state_dict': model.state_dict(), # 模型权重
+    'epoch': epoch,                                 # 训练轮数
+    'model_state_dict': model.state_dict(),         # 模型权重
     'optimizer_state_dict': optimizer.state_dict(), # 优化器状态
-    'train_loss': epoch_train_loss, # 训练损失
-    'train_acc': epoch_train_acc, # 训练准确率
-    'val_loss': epoch_val_loss, # 验证损失
-    'val_acc': epoch_val_acc, # 验证准确率
-    'learning_rate': lr # 学习率
+    'train_loss': epoch_train_loss,                 # 训练损失
+    'train_acc': epoch_train_acc,                   # 训练准确率
+    'val_loss': epoch_val_loss,                     # 验证损失
+    'val_acc': epoch_val_acc,                       # 验证准确率
+    'learning_rate': lr                             # 学习率
 }
 ```
 
